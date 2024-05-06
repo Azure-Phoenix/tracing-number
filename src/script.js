@@ -38,7 +38,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap
 renderer.setClearColor("#211d20")
 renderer.setSize(window.innerWidth, window.innerHeight)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-// renderer.setClearColor(0xe6e6e6, 1)
+renderer.setClearColor(0xe6e6e6, 1)
 
 // camera
 const size = 2
