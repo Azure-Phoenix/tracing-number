@@ -38,10 +38,10 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap
 renderer.setClearColor("#211d20")
 renderer.setSize(window.innerWidth, window.innerHeight)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-renderer.setClearColor(0xe6e6e6, 1)
+// renderer.setClearColor(0xe6e6e6, 1)
 
 // camera
-const size = 2
+const size = 1
 const cameraWidth = (size * window.innerWidth) / window.innerHeight / 2
 const cameraHeight = size / 2
 
@@ -82,7 +82,11 @@ const gltfLoader = new GLTFLoader()
 gltfLoader.setDRACOLoader(dracoLoader)
 
 // Texture Loader
-// const textureLoader = new THREE.TextureLoader()
+const textureLoader = new THREE.TextureLoader()
+textureLoader.load("images/background.jpg", function (texture) {
+  scene.background = texture
+  texture.encoding = THREE.sRGBEncoding;
+})
 
 // Raycaster
 let raycaster = new THREE.Raycaster()
