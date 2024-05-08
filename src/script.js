@@ -73,8 +73,11 @@ scene.add(ambientLight)
 // const axes = new THREE.AxesHelper(10)
 // scene.add(axes)
 
+// Loading
+const manager = new THREE.LoadingManager()
+
 // Draco
-const dracoLoader = new DRACOLoader()
+const dracoLoader = new DRACOLoader(manager)
 dracoLoader.setDecoderPath("/draco/")
 
 // GLTF Loader
@@ -82,10 +85,10 @@ const gltfLoader = new GLTFLoader()
 gltfLoader.setDRACOLoader(dracoLoader)
 
 // Texture Loader
-const textureLoader = new THREE.TextureLoader()
+const textureLoader = new THREE.TextureLoader(manager)
 textureLoader.load("images/background.jpg", function (texture) {
   scene.background = texture
-  texture.encoding = THREE.sRGBEncoding;
+  texture.encoding = THREE.sRGBEncoding
 })
 
 // Raycaster
@@ -94,11 +97,78 @@ let raycaster = new THREE.Raycaster()
 // Clock
 const clock = new THREE.Clock()
 
+// Audio
+const audioLoader = new THREE.AudioLoader()
+const audioListener = new THREE.AudioListener()
+const audio = new THREE.Audio(audioListener)
+
 /**
  ******************************
  ************ Main ************
  ******************************
  */
+
+// Loading Progress Bar
+manager.onProgress = function (url, itemsLoaded, itemsTotal) {
+  document.querySelector(".progressbar").style.width =
+    (itemsLoaded / itemsTotal) * 100 + "%"
+  if (itemsLoaded === itemsTotal) {
+    document.querySelector("#instructions").innerHTML = `
+                <span class="buttonload" stu>
+                    <i class="fa fa-spinner fa-spin"></i>Click to Start!
+                </span>
+            `
+    window.addEventListener("mousedown", (e) => {
+      try {
+        document.querySelector(".progress").style.opacity = 1
+        document.querySelector("#blocker").style.opacity = 1
+
+        gsap.to(document.querySelector(".progress").style, {
+          opacity: 0,
+          duration: 2,
+          delay: 1,
+        })
+        gsap.to(document.querySelector("#blocker").style, {
+          opacity: 0,
+          duration: 2,
+          delay: 1,
+          onComplete: () => {
+            document.querySelector(".progress").remove()
+            document.querySelector("#blocker").remove()
+            setTimeout(() => {
+              showPrompt()
+            }, 1000)
+          },
+        })
+      } catch {}
+    })
+
+    window.addEventListener("touchstart", (e) => {
+      try {
+        document.querySelector(".progress").style.opacity = 1
+        document.querySelector("#blocker").style.opacity = 1
+
+        gsap.to(document.querySelector(".progress").style, {
+          opacity: 0,
+          duration: 2,
+          delay: 1,
+        })
+        gsap.to(document.querySelector("#blocker").style, {
+          opacity: 0,
+          duration: 2,
+          delay: 1,
+          onComplete: () => {
+            document.querySelector(".progress").remove()
+            document.querySelector("#blocker").remove()
+            setTimeout(() => {
+              showPrompt()
+            }, 500)
+          },
+        })
+      } catch {}
+    })
+  }
+}
 
 /**
  * Definitions
@@ -122,6 +192,15 @@ let isCorrectStart = false
 let drawingPrompt = false
 let mouse = new THREE.Vector2()
 let meshes = new THREE.Group()
+
+let colors = [0xf25c87, 0x1bd1cb, 0xa97bc9]
+let colorsInHSL = [
+  "hsla(343, 85%, 65%, 1)",
+  "hsla(178, 77%, 46%, 1)",
+  "hsla(275, 42%, 64%, 1)",
+]
+
+const audios = [`audios/1.Trace_1.mp3`, `audios/1.Trace_2.mp3`, `audios/1.Trace_3.mp3`]
 
 // Curves
 let points = [
@@ -186,7 +265,7 @@ let curves = [
 
 const tp = new TexurePaint(meshes, raycaster, 512)
 tp.mouse("LEFT", window)
-tp.brush.changeColor("hsla(60, 100%, 44%, 1)") // #DFDF00
+tp.brush.changeColor(colorsInHSL[number - 1])
 tp.brush.changeOpacity(0)
 tp.changeBrush(100, 100)
 
@@ -222,6 +301,10 @@ function clearScene() {
 }
 
 function nextNum() {
+  if (number != 1)
+    setTimeout(() => {
+      showPrompt()
+    }, 1000)
   // Load main model
   gltfLoader.load(`/models/${number}.glb`, (gltf) => {
     model = gltf.scene
@@ -243,15 +326,13 @@ function nextNum() {
             child.visible = true
           }
           if (child.name.startsWith(`${number}_show`)) {
+            if (child.name.endsWith("fill")) child.material.color.set(colors[number - 1])
             child.visible = true
           }
           scene.add(child.clone())
         }
       }
     })
-    setTimeout(() => {
-      showPrompt()
-    }, 1000)
   })
 
   scene.add(meshes)
@@ -259,6 +340,7 @@ function nextNum() {
 nextNum()
 
 function showPrompt() {
+  playSound()
   cursor.position.set(
     curves[number - 1][step - 1][0],
     curves[number - 1][step - 1][1],
@@ -295,6 +377,18 @@ function hidePrompt() {
   })
 }
 
+function playSound() {
+  audio.stop()
+  let audioFile = audios[number - 1]
+
+  audioLoader.load(audioFile, (buffer) => {
+    audio.setBuffer(buffer)
+    audio.setLoop(false)
+    audio.setVolume(0.5)
+    audio.play()
+  })
+}
+
 function start_painting() {
   console.log(startObject)
   if (startObject.name === `trigger_${number}_${step}_start`) {
@@ -311,7 +405,9 @@ function end_painting() {
     step++
     if (step == 3) {
       console.log("adfasdfasdf")
-      scene.getObjectByName(`${number}_paint_${step - 1}`).material.color.set(0xdfdf00)
+      scene
+        .getObjectByName(`${number}_paint_${step - 1}`)
+        .material.color.set(colors[number - 1])
       scene.getObjectByName(`${number}_paint_${step - 1}`).visible = true
       step = 1
       number++
@@ -321,6 +417,7 @@ function end_painting() {
         }, 3000)
       }
       setTimeout(() => {
+        tp.brush.changeColor(colorsInHSL[number - 1])
         tp.undo()
         tp.brush.changeOpacity(0)
         clearScene()
@@ -330,7 +427,9 @@ function end_painting() {
       tp.brush.changeOpacity(0)
       isPaintAvailable = false
       if (step == 2) {
-        scene.getObjectByName(`${number}_paint_${step - 1}`).material.color.set(0xdfdf00)
+        scene
+          .getObjectByName(`${number}_paint_${step - 1}`)
+          .material.color.set(colors[number - 1])
       }
       scene.getObjectByName(`${number}_paint_${step - 1}`).visible = true
       tp.undo()
@@ -434,13 +533,14 @@ window.addEventListener("touchend", (event) => {
 
 // Auto Resize
 window.addEventListener("resize", () => {
-  // Update camera
-  camera.aspect = window.innerWidth / window.innerHeight
+  const newAspect = window.innerWidth / window.innerHeight
+
+  camera.left = (size * newAspect) / -2
+  camera.right = (size * newAspect) / 2
+
   camera.updateProjectionMatrix()
 
-  // Update renderer
   renderer.setSize(window.innerWidth, window.innerHeight)
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 })
 
 /**
